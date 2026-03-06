@@ -18,6 +18,13 @@ const ID = {
   catYiyecek: 'cat_yiyecek_04',
   catMalzeme: 'cat_malzeme_05',
   catAmbalaj: 'cat_ambalaj_06',
+  // Campaign IDs
+  camp1: 'camp_001',
+  camp2: 'camp_002',
+  camp3: 'camp_003',
+  camp4: 'camp_004',
+  camp5: 'camp_005',
+  camp6: 'camp_006',
 } as const;
 
 // ─── Users ───────────────────────────────────────────────────────────────────
@@ -330,6 +337,114 @@ export const MOCK_DASHBOARD_STATS = {
   },
   products: { total: MOCK_PRODUCTS.length },
 };
+
+// ─── Campaigns ───────────────────────────────────────────────────────────────
+export type CampaignType = 'PERCENTAGE' | 'FIXED' | 'BUY_X_PAY_Y';
+
+export interface Campaign {
+  id: string;
+  name: string;
+  description: string;
+  type: CampaignType;
+  discountValue: number;        // % for PERCENTAGE, ₺ for FIXED, Y for BUY_X_PAY_Y
+  buyQuantity?: number;         // X for BUY_X_PAY_Y
+  minimumAmount?: number;       // minimum cart total to apply
+  code?: string;                // promo code (null = auto-apply)
+  targetCategories?: string[];  // category IDs (null = all)
+  targetProducts?: string[];    // product IDs (null = all)
+  startDate: string;
+  endDate: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export let MOCK_CAMPAIGNS: Campaign[] = [
+  {
+    id: ID.camp1,
+    name: 'Kahve Çekirdeklerinde %15 İndirim',
+    description: 'Tüm kahve çekirdeği kategorisinde %15 indirim',
+    type: 'PERCENTAGE',
+    discountValue: 15,
+    targetCategories: [ID.catKahve],
+    startDate: '2026-03-01T00:00:00Z',
+    endDate: '2026-04-01T00:00:00Z',
+    isActive: true,
+    createdAt: '2026-02-28T10:00:00Z',
+    updatedAt: '2026-02-28T10:00:00Z',
+  },
+  {
+    id: ID.camp2,
+    name: '500₺ Üzeri 50₺ İndirim',
+    description: '500₺ ve üzeri siparişlerde 50₺ indirim',
+    type: 'FIXED',
+    discountValue: 50,
+    minimumAmount: 500,
+    startDate: '2026-03-01T00:00:00Z',
+    endDate: '2026-03-31T00:00:00Z',
+    isActive: true,
+    createdAt: '2026-02-28T10:00:00Z',
+    updatedAt: '2026-02-28T10:00:00Z',
+  },
+  {
+    id: ID.camp3,
+    name: 'Yiyeceklerde 3 Al 2 Öde',
+    description: 'Yiyecek kategorisinde 3 al 2 öde kampanyası',
+    type: 'BUY_X_PAY_Y',
+    discountValue: 2,   // pay Y
+    buyQuantity: 3,     // buy X
+    targetCategories: [ID.catYiyecek],
+    startDate: '2026-03-01T00:00:00Z',
+    endDate: '2026-03-15T00:00:00Z',
+    isActive: true,
+    createdAt: '2026-02-28T10:00:00Z',
+    updatedAt: '2026-02-28T10:00:00Z',
+  },
+  {
+    id: ID.camp4,
+    name: 'FIERO2026 — %10 İndirim Kodu',
+    description: 'FIERO2026 kodu ile tüm ürünlerde %10 indirim',
+    type: 'PERCENTAGE',
+    discountValue: 10,
+    code: 'FIERO2026',
+    startDate: '2026-01-01T00:00:00Z',
+    endDate: '2026-12-31T00:00:00Z',
+    isActive: true,
+    createdAt: '2026-01-01T10:00:00Z',
+    updatedAt: '2026-01-01T10:00:00Z',
+  },
+  {
+    id: ID.camp5,
+    name: 'Kış Kampanyası (Süresi Dolmuş)',
+    description: 'Şuruplarda %20 indirim',
+    type: 'PERCENTAGE',
+    discountValue: 20,
+    targetCategories: [ID.catSurup],
+    startDate: '2025-12-01T00:00:00Z',
+    endDate: '2026-02-28T00:00:00Z',
+    isActive: false,
+    createdAt: '2025-12-01T10:00:00Z',
+    updatedAt: '2025-12-01T10:00:00Z',
+  },
+  {
+    id: ID.camp6,
+    name: 'Yaz Kampanyası (Yakında)',
+    description: 'İçeceklerde %25 indirim — Haziran ayında başlıyor',
+    type: 'PERCENTAGE',
+    discountValue: 25,
+    targetCategories: [ID.catIcecek],
+    startDate: '2026-06-01T00:00:00Z',
+    endDate: '2026-08-31T00:00:00Z',
+    isActive: true,
+    createdAt: '2026-03-01T10:00:00Z',
+    updatedAt: '2026-03-01T10:00:00Z',
+  },
+];
+
+let _campCount = MOCK_CAMPAIGNS.length + 1;
+export function getNextCampaignId(): string {
+  return `camp_${String(_campCount++).padStart(3, '0')}`;
+}
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 let _oc = MOCK_ORDERS.length + 1;

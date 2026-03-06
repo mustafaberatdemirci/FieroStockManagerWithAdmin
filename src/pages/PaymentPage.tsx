@@ -184,10 +184,10 @@ export function PaymentPage() {
                   {/* Current Account Option */}
                   <div
                     className={`border rounded-lg p-4 cursor-pointer transition-colors ${watchedPaymentMethod === 'CURRENT_ACCOUNT'
-                        ? 'border-blue-500 bg-blue-50'
-                        : canPayWithBalance
-                          ? 'border-gray-200 hover:border-gray-300'
-                          : 'border-gray-200 opacity-50 cursor-not-allowed'
+                      ? 'border-blue-500 bg-blue-50'
+                      : canPayWithBalance
+                        ? 'border-gray-200 hover:border-gray-300'
+                        : 'border-gray-200 opacity-50 cursor-not-allowed'
                       }`}
                     onClick={() => canPayWithBalance && setValue('paymentMethod', 'CURRENT_ACCOUNT')}
                   >
@@ -215,8 +215,8 @@ export function PaymentPage() {
                   {/* Bank Transfer Option */}
                   <div
                     className={`border rounded-lg p-4 cursor-pointer transition-colors ${watchedPaymentMethod === 'BANK_TRANSFER'
-                        ? 'border-blue-500 bg-blue-50'
-                        : 'border-gray-200 hover:border-gray-300'
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-gray-200 hover:border-gray-300'
                       }`}
                     onClick={() => setValue('paymentMethod', 'BANK_TRANSFER')}
                   >
@@ -240,8 +240,8 @@ export function PaymentPage() {
                   {/* Credit Card Option */}
                   <div
                     className={`border rounded-lg p-4 cursor-pointer transition-colors ${watchedPaymentMethod === 'CREDIT_CARD'
-                        ? 'border-blue-500 bg-blue-50'
-                        : 'border-gray-200 hover:border-gray-300'
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-gray-200 hover:border-gray-300'
                       }`}
                     onClick={() => setValue('paymentMethod', 'CREDIT_CARD')}
                   >

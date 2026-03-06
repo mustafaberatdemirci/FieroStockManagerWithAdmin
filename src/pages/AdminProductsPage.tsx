@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../lib/axios';
 import { Button } from '../components/ui/Button';
-import { Plus, Upload, Download, Edit, Trash2, ToggleLeft, ToggleRight, Search, X } from 'lucide-react';
+import { Plus, Upload, Download, Edit, Trash2, ToggleLeft, ToggleRight, Search, X, ArrowLeft } from 'lucide-react';
 
 interface Product {
   id: string;
@@ -33,29 +34,30 @@ interface Category {
 
 export function AdminProductsPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
-  
+
   // Filters
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  
+
   // Modal states
   const [showProductModal, setShowProductModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [showImportModal, setShowImportModal] = useState(false);
-  
+
   // File input ref
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   // Product form state
   const [productForm, setProductForm] = useState({
     code: '',
@@ -69,11 +71,11 @@ export function AdminProductsPage() {
     maxOrderQuantity: '',
     isActive: true
   });
-  
+
   // Form validation and loading
   const [formLoading, setFormLoading] = useState(false);
   const [importLoading, setImportLoading] = useState(false);
-  
+
   // CSV Import handlers
   const handleFileSelect = () => {
     fileInputRef.current?.click();
@@ -201,7 +203,7 @@ export function AdminProductsPage() {
       });
 
       const response = await api.get(`/admin/products?${params}`);
-      
+
       if (response.data.success) {
         setProducts(response.data.data.products);
         setTotalPages(response.data.data.pagination.totalPages);
@@ -228,10 +230,10 @@ export function AdminProductsPage() {
   const handleToggleStatus = async (productId: string) => {
     try {
       const response = await api.patch(`/admin/products/${productId}/toggle-status`);
-      
+
       if (response.data.success) {
-        setProducts(prev => prev.map(p => 
-          p.id === productId 
+        setProducts(prev => prev.map(p =>
+          p.id === productId
             ? { ...p, isActive: response.data.data.isActive }
             : p
         ));
@@ -243,10 +245,10 @@ export function AdminProductsPage() {
 
   const handleDelete = async (productId: string) => {
     if (!confirm('Bu ürünü silmek istediğinize emin misiniz?')) return;
-    
+
     try {
       const response = await api.delete(`/admin/products/${productId}`);
-      
+
       if (response.data.success) {
         fetchProducts(); // Refresh list
       }
@@ -265,7 +267,7 @@ export function AdminProductsPage() {
       const response = await api.get(`/admin/products/export?${params}`, {
         responseType: 'blob'
       });
-      
+
       const blob = new Blob([response.data], { type: 'text/csv' });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -295,12 +297,17 @@ export function AdminProductsPage() {
         {/* Header */}
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
           <div className="flex justify-between items-center mb-4">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Ürün Yönetimi</h1>
-              <p className="text-gray-600">Toplam {totalCount} ürün</p>
+            <div className="flex items-center gap-3">
+              <button onClick={() => navigate('/admin')} className="p-2 rounded-lg hover:bg-gray-200 transition-colors">
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">Ürün Yönetimi</h1>
+                <p className="text-gray-600">Toplam {totalCount} ürün</p>
+              </div>
             </div>
             <div className="flex gap-3">
-              <Button 
+              <Button
                 onClick={() => setShowImportModal(true)}
                 className="flex items-center gap-2"
                 variant="secondary"
@@ -308,7 +315,7 @@ export function AdminProductsPage() {
                 <Upload className="h-4 w-4" />
                 CSV İçe Aktar
               </Button>
-              <Button 
+              <Button
                 onClick={handleExport}
                 className="flex items-center gap-2"
                 variant="secondary"
@@ -316,7 +323,7 @@ export function AdminProductsPage() {
                 <Download className="h-4 w-4" />
                 CSV Dışa Aktar
               </Button>
-              <Button 
+              <Button
                 onClick={() => setShowProductModal(true)}
                 className="flex items-center gap-2"
               >
@@ -431,11 +438,10 @@ export function AdminProductsPage() {
                           {product.stockQuantity}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                            product.isActive 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-red-100 text-red-800'
-                          }`}>
+                          <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${product.isActive
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-red-100 text-red-800'
+                            }`}>
                             {product.isActive ? 'Aktif' : 'Pasif'}
                           </span>
                         </td>
@@ -453,9 +459,8 @@ export function AdminProductsPage() {
                             </button>
                             <button
                               onClick={() => handleToggleStatus(product.id)}
-                              className={`${
-                                product.isActive ? 'text-red-600 hover:text-red-900' : 'text-green-600 hover:text-green-900'
-                              }`}
+                              className={`${product.isActive ? 'text-red-600 hover:text-red-900' : 'text-green-600 hover:text-green-900'
+                                }`}
                               title={product.isActive ? 'Pasifleştir' : 'Aktifleştir'}
                             >
                               {product.isActive ? (
@@ -774,7 +779,7 @@ export function AdminProductsPage() {
 
             <div className="space-y-4">
               {/* File Upload Area */}
-              <div 
+              <div
                 onClick={handleFileSelect}
                 className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-orange-400 transition-colors"
               >

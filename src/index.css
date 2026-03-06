@@ -1,3 +1,19 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.campaign-marquee {
+  display: flex;
+  gap: 0.75rem;
+  width: max-content;
+  animation: marquee 25s linear infinite;
+}
+
+.campaign-marquee:hover {
+  animation-play-state: paused;
+}

@@ -11,8 +11,11 @@ import {
   MOCK_ORDERS,
   MOCK_STORES,
   MOCK_DASHBOARD_STATS,
+  MOCK_CAMPAIGNS,
   generateMockOrderNumber,
   getNextOrderId,
+  getNextCampaignId,
+  type Campaign,
 } from './data';
 
 import type { AxiosRequestConfig } from 'axios';
@@ -141,6 +144,28 @@ export async function handleMockRequest(config: AxiosRequestConfig): Promise<Moc
   }
   if (url.includes('/admin/products') && method === 'GET') {
     return handleGetAdminProducts(params);
+  }
+
+  // ─── CAMPAIGNS (store user — active only) ─────────────────────────────
+  if (url.includes('/campaigns/apply-code') && method === 'POST') {
+    return handleApplyPromoCode(body);
+  }
+  if (url.includes('/campaigns') && !url.includes('/admin/') && method === 'GET') {
+    return handleGetActiveCampaigns();
+  }
+
+  // ─── ADMIN CAMPAIGNS (CRUD) ────────────────────────────────────────────
+  if (url.match(/\/admin\/campaigns\/[^/]+$/) && method === 'PUT') {
+    return handleAdminUpdateCampaign(url.split('/').pop()!, body);
+  }
+  if (url.match(/\/admin\/campaigns\/[^/]+$/) && method === 'DELETE') {
+    return handleAdminDeleteCampaign(url.split('/').pop()!);
+  }
+  if (url.includes('/admin/campaigns') && method === 'POST') {
+    return handleAdminCreateCampaign(body);
+  }
+  if (url.includes('/admin/campaigns') && method === 'GET') {
+    return { status: 200, data: { success: true, data: MOCK_CAMPAIGNS } };
   }
 
   // ─── HEALTH ─────────────────────────────────────────────────────────────
@@ -579,4 +604,81 @@ function handleDeleteStore(id: string): MockResponse {
 
   MOCK_STORES.splice(idx, 1);
   return { status: 200, data: { success: true, message: 'Store deleted' } };
+}
+
+// ─── Campaign Handlers ──────────────────────────────────────────────────────
+
+function handleGetActiveCampaigns(): MockResponse {
+  const now = new Date().toISOString();
+  const active = MOCK_CAMPAIGNS.filter(c =>
+    c.isActive && c.startDate <= now && c.endDate >= now && !c.code
+  );
+  return { status: 200, data: { success: true, data: active } };
+}
+
+function handleApplyPromoCode(body: { code?: string }): MockResponse {
+  if (!body.code) {
+    return { status: 400, data: { success: false, message: 'Promosyon kodu gereklidir' } };
+  }
+  const now = new Date().toISOString();
+  const campaign = MOCK_CAMPAIGNS.find(c =>
+    c.code?.toUpperCase() === body.code!.toUpperCase() &&
+    c.isActive && c.startDate <= now && c.endDate >= now
+  );
+  if (!campaign) {
+    return { status: 404, data: { success: false, message: 'Geçersiz veya süresi dolmuş promosyon kodu' } };
+  }
+  return { status: 200, data: { success: true, data: campaign } };
+}
+
+function handleAdminCreateCampaign(body: Record<string, unknown>): MockResponse {
+  const now = new Date().toISOString();
+  const newCampaign: Campaign = {
+    id: getNextCampaignId(),
+    name: (body.name as string) || '',
+    description: (body.description as string) || '',
+    type: (body.type as Campaign['type']) || 'PERCENTAGE',
+    discountValue: (body.discountValue as number) || 0,
+    buyQuantity: body.buyQuantity as number | undefined,
+    minimumAmount: body.minimumAmount as number | undefined,
+    code: body.code as string | undefined,
+    targetCategories: body.targetCategories as string[] | undefined,
+    targetProducts: body.targetProducts as string[] | undefined,
+    startDate: (body.startDate as string) || now,
+    endDate: (body.endDate as string) || now,
+    isActive: body.isActive !== false,
+    createdAt: now,
+    updatedAt: now,
+  };
+  MOCK_CAMPAIGNS.push(newCampaign);
+  return { status: 201, data: { success: true, data: newCampaign } };
+}
+
+function handleAdminUpdateCampaign(id: string, body: Record<string, unknown>): MockResponse {
+  const camp = MOCK_CAMPAIGNS.find(c => c.id === id);
+  if (!camp) return { status: 404, data: { success: false, message: 'Campaign not found' } };
+
+  if (body.name !== undefined) camp.name = body.name as string;
+  if (body.description !== undefined) camp.description = body.description as string;
+  if (body.type !== undefined) camp.type = body.type as Campaign['type'];
+  if (body.discountValue !== undefined) camp.discountValue = body.discountValue as number;
+  if (body.buyQuantity !== undefined) camp.buyQuantity = body.buyQuantity as number;
+  if (body.minimumAmount !== undefined) camp.minimumAmount = body.minimumAmount as number;
+  if (body.code !== undefined) camp.code = body.code as string;
+  if (body.targetCategories !== undefined) camp.targetCategories = body.targetCategories as string[];
+  if (body.targetProducts !== undefined) camp.targetProducts = body.targetProducts as string[];
+  if (body.startDate !== undefined) camp.startDate = body.startDate as string;
+  if (body.endDate !== undefined) camp.endDate = body.endDate as string;
+  if (body.isActive !== undefined) camp.isActive = body.isActive as boolean;
+  camp.updatedAt = new Date().toISOString();
+
+  return { status: 200, data: { success: true, data: camp } };
+}
+
+function handleAdminDeleteCampaign(id: string): MockResponse {
+  const idx = MOCK_CAMPAIGNS.findIndex(c => c.id === id);
+  if (idx === -1) return { status: 404, data: { success: false, message: 'Campaign not found' } };
+
+  MOCK_CAMPAIGNS.splice(idx, 1);
+  return { status: 200, data: { success: true, message: 'Campaign deleted' } };
 }
