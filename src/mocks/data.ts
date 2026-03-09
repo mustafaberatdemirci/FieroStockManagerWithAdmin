@@ -18,6 +18,9 @@ const ID = {
   catYiyecek: 'cat_yiyecek_04',
   catMalzeme: 'cat_malzeme_05',
   catAmbalaj: 'cat_ambalaj_06',
+  // Supplier IDs
+  supFiero: 'sup_fiero_01',
+  supSut: 'sup_sut_02',
   // Campaign IDs
   camp1: 'camp_001',
   camp2: 'camp_002',
@@ -74,6 +77,66 @@ export const MOCK_CATEGORIES = [
   { id: ID.catAmbalaj, name: 'Ambalaj', description: 'Ambalaj malzemeleri', isActive: true, createdAt: '2025-08-16T12:00:00Z', updatedAt: '2025-08-16T12:00:00Z' },
 ];
 
+// ─── Suppliers ────────────────────────────────────────────────────────────────
+export interface Supplier {
+  id: string;
+  name: string;
+  taxNumber?: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  bankName?: string;
+  iban?: string;
+  accountHolder?: string;
+  apiUrl?: string;
+  apiKey?: string;
+  webhookUrl?: string;
+  paymentMethods: string[];
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export let MOCK_SUPPLIERS: Supplier[] = [
+  {
+    id: ID.supFiero,
+    name: 'Fiero Coffee & Food',
+    taxNumber: '1234567890',
+    address: 'Çankaya, Ankara',
+    phone: '+90 312 111 22 33',
+    email: 'info@fierocoffee.com',
+    bankName: 'Ziraat Bankası',
+    iban: 'TR33 0001 0000 0000 0000 0001 00',
+    accountHolder: 'Fiero Gıda San. ve Tic. Ltd. Şti.',
+    paymentMethods: ['BANK_TRANSFER', 'OPEN_ACCOUNT'],
+    isActive: true,
+    createdAt: '2025-01-01T00:00:00Z',
+    updatedAt: '2025-01-01T00:00:00Z',
+  },
+  {
+    id: ID.supSut,
+    name: 'Pınar Süt Ürünleri A.Ş.',
+    taxNumber: '9876543210',
+    address: 'Kemalpaşa, İzmir',
+    phone: '+90 232 444 74 62',
+    email: 'siparis@pinar.com.tr',
+    bankName: 'İş Bankası',
+    iban: 'TR98 0006 4000 0011 2340 0099 99',
+    accountHolder: 'Pınar Süt Mamulleri San. A.Ş.',
+    apiUrl: 'https://api.pinar.com.tr/orders',
+    apiKey: 'pk_live_mock_key_12345',
+    paymentMethods: ['OPEN_ACCOUNT', 'BANK_TRANSFER'],
+    isActive: true,
+    createdAt: '2025-01-15T00:00:00Z',
+    updatedAt: '2025-01-15T00:00:00Z',
+  },
+];
+
+let _supCount = MOCK_SUPPLIERS.length + 1;
+export function getNextSupplierId(): string {
+  return `sup_${String(_supCount++).padStart(3, '0')}`;
+}
+
 // ─── Products (User's exact product list) ────────────────────────────────────
 // Category assignment based on product code prefix / content
 function catFor(code: string, name: string): string {
@@ -87,6 +150,13 @@ function catFor(code: string, name: string): string {
   if (code.startsWith('BG.IT.') || code.startsWith('MZ.YH.T.') || n.includes('KURABIYE') || n.includes('MUFFIN') || n.includes('BAGEL') || n.includes('PANINI') || n.includes('TOST') || n.includes('CAKE') || n.includes('PASTA') || n.includes('KEK') || n.includes('BOREK') || n.includes('SUTLAC') || n.includes('KAZANDIBI') || n.includes('PROFITEROL') || n.includes('MANOLYA') || n.includes('MOZAIK') || n.includes('ISIT YE') || n.includes('DUNI') || n.includes('KRUVASAN') || n.includes('FIESTA') || n.includes('CUP ') || n.includes('BOREGI') || n.includes('SU BOREGI')) return ID.catYiyecek;
   if (n.includes('FILTRE KAHVE') || n.includes('DIBEK') || n.includes('ESP ') || n.includes('CREMOSO')) return ID.catKahve;
   return ID.catMalzeme;
+}
+
+// Supplier assignment based on product name
+function supplierFor(name: string): string {
+  const n = name.toUpperCase();
+  if (n.includes('PINAR') || n.includes('SUTAS') || n.includes('SÜT') || n.includes('YULAF SUT') || n.includes('BADEM SUT')) return ID.supSut;
+  return ID.supFiero;
 }
 
 const _raw = [
@@ -254,6 +324,7 @@ export const MOCK_PRODUCTS = _raw.map(p => {
     price: p.price,
     vatRate: p.vatRate,
     categoryId: cid,
+    supplierId: supplierFor(p.name),
     isActive: true,
     stockQuantity: Math.floor(Math.random() * 200) + 10,
     minOrderQuantity: 1,

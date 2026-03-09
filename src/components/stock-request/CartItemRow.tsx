@@ -13,6 +13,7 @@ export interface StockItem {
     requestedAmount: number;
     price: number;
     vatRate: number;
+    supplierId?: string;
 }
 
 export interface SelectOption {

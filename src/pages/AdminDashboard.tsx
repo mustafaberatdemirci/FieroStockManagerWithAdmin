@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Store, LogOut, Search, ChevronDown, ChevronUp, Receipt, Edit, BarChart3, Loader, Package, Tag } from 'lucide-react';
+import { Store, LogOut, Search, ChevronDown, ChevronUp, Receipt, Edit, BarChart3, Loader, Package, Tag, Truck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import {
   useAdminOrders,
@@ -139,6 +139,13 @@ export function AdminDashboard() {
               >
                 <Tag className="w-5 h-5" />
                 <span className="font-medium">Kampanya Yönetimi</span>
+              </button>
+              <button
+                onClick={() => navigate('/admin/suppliers')}
+                className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white hover:bg-teal-700 rounded-lg transition-colors duration-200"
+              >
+                <Truck className="w-5 h-5" />
+                <span className="font-medium">Tedarikçi Yönetimi</span>
               </button>
               <button
                 onClick={handleLogout}

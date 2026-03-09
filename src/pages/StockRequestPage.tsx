@@ -108,11 +108,17 @@ export function StockRequestPage() {
   };
 
   const onSubmit = async (data: StockRequestData) => {
+    // Attach supplierId to each item for payment page grouping
+    const itemsWithSupplier = data.items.map(item => {
+      const product = products.find((p: Product) => p.code === item.code);
+      return { ...item, supplierId: (product as any)?.supplierId || '' };
+    });
+
     navigate('/payment', {
       state: {
         totalAmount: totalPrice + totalVAT - totalDiscount,
         discountAmount: totalDiscount,
-        orderItems: data.items,
+        orderItems: itemsWithSupplier,
         notes: data.notes,
       },
     });
@@ -139,6 +145,7 @@ export function StockRequestPage() {
           name: selectedProduct.name,
           price: selectedProduct.price,
           vatRate: selectedProduct.vatRate,
+          supplierId: (selectedProduct as any).supplierId || '',
         });
       }
     } else {

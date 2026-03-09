@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Banknote, ArrowRight, Wallet, AlertCircle, Copy, CreditCard } from 'lucide-react';
+import { Banknote, ArrowRight, Wallet, AlertCircle, Copy, CreditCard, Building2, Check } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useCreateOrder } from '../hooks/useOrders';
 import { formatPrice } from '../utils/format';
 import { paymentSchema, type PaymentFormData } from '../schemas/validation';
 import { FormField, FormButton } from '../components/ui/FormField';
+import { useSuppliers } from '../hooks/useSuppliers';
 
 export function PaymentPage() {
   const navigate = useNavigate();
@@ -15,7 +16,27 @@ export function PaymentPage() {
 
   const [serverError, setServerError] = useState<string | null>(null);
   const [orderNumberCopied, setOrderNumberCopied] = useState(false);
+  const [copiedIban, setCopiedIban] = useState<string | null>(null);
   const createOrder = useCreateOrder();
+  const { data: suppliers = [] } = useSuppliers();
+
+  // Group items by supplier
+  const supplierGroups = useMemo(() => {
+    const groups: Record<string, { supplierId: string; items: typeof orderItems; subtotal: number }> = {};
+    for (const item of orderItems) {
+      const sid = item.supplierId || 'unknown';
+      if (!groups[sid]) groups[sid] = { supplierId: sid, items: [], subtotal: 0 };
+      groups[sid].items.push(item);
+      groups[sid].subtotal += item.price * item.requestedAmount;
+    }
+    return Object.values(groups);
+  }, [orderItems]);
+
+  const copyIbanToClipboard = (iban: string) => {
+    navigator.clipboard.writeText(iban.replace(/\s/g, ''));
+    setCopiedIban(iban);
+    setTimeout(() => setCopiedIban(null), 2000);
+  };
 
   // Generate a temporary order number for bank transfer reference
   const temporaryOrderNumber = useMemo(() => {
@@ -264,23 +285,57 @@ export function PaymentPage() {
                 </div>
               </FormField>
 
-              {/* Bank Transfer Details */}
+              {/* Bank Transfer Details — Per Supplier */}
               {watchedPaymentMethod === 'BANK_TRANSFER' && (
-                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-4">
-                  <h3 className="font-medium text-gray-900">Banka Hesap Bilgileri</h3>
-                  <div className="space-y-2">
-                    <p className="text-sm text-gray-600">
-                      <span className="font-medium">Banka:</span> Garanti Bankası - Ankara OSB Şube
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      <span className="font-medium">Hesap Sahibi:</span> BUGÜN GIDA VE TURİZM İŞLETMELERİ YATIRIM A.Ş
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      <span className="font-medium">IBAN:</span> TR84 0006 2001 6810 0006 2963 86
-                    </p>
-                  </div>
+                <div className="space-y-4">
+                  {supplierGroups.map(group => {
+                    const supplier = suppliers.find(s => s.id === group.supplierId);
+                    return (
+                      <div key={group.supplierId} className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-3">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Building2 className="w-4 h-4 text-teal-600" />
+                          <h3 className="font-semibold text-gray-900 text-sm">
+                            {supplier?.name || 'Bilinmeyen Tedarikçi'}
+                          </h3>
+                          <span className="ml-auto text-sm font-bold text-gray-700">
+                            {formatPrice(group.subtotal)}
+                          </span>
+                        </div>
+                        {/* Items in this group */}
+                        <div className="text-xs text-gray-500 space-y-0.5">
+                          {group.items.map((item: { name: string; requestedAmount: number; price: number }, i: number) => (
+                            <div key={i} className="flex justify-between">
+                              <span>{item.name} x{item.requestedAmount}</span>
+                              <span>{formatPrice(item.price * item.requestedAmount)}</span>
+                            </div>
+                          ))}
+                        </div>
+                        {/* Bank info */}
+                        {supplier?.iban && (
+                          <div className="bg-white rounded-lg p-3 border border-gray-100">
+                            <p className="text-xs text-gray-500">
+                              <span className="font-medium">Banka:</span> {supplier.bankName}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              <span className="font-medium">Hesap Sahibi:</span> {supplier.accountHolder}
+                            </p>
+                            <div className="flex items-center justify-between mt-1">
+                              <p className="text-sm font-mono text-gray-700">{supplier.iban}</p>
+                              <button
+                                type="button"
+                                onClick={() => copyIbanToClipboard(supplier.iban!)}
+                                className="p-1 rounded hover:bg-gray-100 text-gray-400"
+                              >
+                                {copiedIban === supplier.iban ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
 
-                  {/* Order Number for Bank Transfer */}
+                  {/* Order Number */}
                   <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium text-orange-800">Sipariş Numarası:</span>
@@ -300,7 +355,7 @@ export function PaymentPage() {
 
                   <div className="bg-blue-50 border border-blue-100 rounded-lg p-3">
                     <p className="text-sm text-blue-600">
-                      <span className="font-medium">Önemli:</span> Havale yaparken açıklama kısmına yukarıdaki sipariş numarasını (<span className="font-mono font-medium">{temporaryOrderNumber}</span>) yazmayı unutmayınız.
+                      <span className="font-medium">Önemli:</span> Havale yaparken açıklama kısmına sipariş numarasını (<span className="font-mono font-medium">{temporaryOrderNumber}</span>) yazmayı unutmayınız.
                     </p>
                   </div>
                 </div>
@@ -324,62 +379,99 @@ export function PaymentPage() {
                 </div>
               )}
 
-              {/* Credit Card Details (Mock) */}
+              {/* Credit Card Details — Per Supplier */}
               {watchedPaymentMethod === 'CREDIT_CARD' && (
-                <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 space-y-4">
-                  <h3 className="font-medium text-purple-900">Kart Bilgileri</h3>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Kart Numarası</label>
-                    <input
-                      type="text"
-                      maxLength={19}
-                      placeholder="0000 0000 0000 0000"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 font-mono"
-                      onChange={(e) => {
-                        let v = e.target.value.replace(/\D/g, '').slice(0, 16);
-                        v = v.replace(/(\d{4})(?=\d)/g, '$1 ');
-                        e.target.value = v;
-                      }}
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Son Kullanma</label>
-                      <input
-                        type="text"
-                        maxLength={5}
-                        placeholder="AA/YY"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 font-mono"
-                        onChange={(e) => {
-                          let v = e.target.value.replace(/\D/g, '').slice(0, 4);
-                          if (v.length > 2) v = v.slice(0, 2) + '/' + v.slice(2);
-                          e.target.value = v;
-                        }}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">CVV</label>
-                      <input
-                        type="password"
-                        maxLength={3}
-                        placeholder="•••"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 font-mono"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Kart Sahibi</label>
-                    <input
-                      type="text"
-                      placeholder="AD SOYAD"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 uppercase"
-                    />
-                  </div>
-                  <div className="bg-purple-100 border border-purple-200 rounded-lg p-3">
-                    <p className="text-sm text-purple-700">
-                      <span className="font-medium">🔒 Güvenli Ödeme:</span> Kart bilgileriniz SSL şifreleme ile korunmaktadır. (Mock)
-                    </p>
-                  </div>
+                <div className="space-y-5">
+                  {supplierGroups.map((group, groupIdx) => {
+                    const supplier = suppliers.find(s => s.id === group.supplierId);
+                    const accent = groupIdx % 2 === 0
+                      ? { bg: 'bg-purple-50', border: 'border-purple-200', ring: 'focus:ring-purple-500 focus:border-purple-500', text: 'text-purple-900', textSub: 'text-purple-700', badge: 'bg-purple-100 text-purple-700', icon: 'text-purple-600' }
+                      : { bg: 'bg-indigo-50', border: 'border-indigo-200', ring: 'focus:ring-indigo-500 focus:border-indigo-500', text: 'text-indigo-900', textSub: 'text-indigo-700', badge: 'bg-indigo-100 text-indigo-700', icon: 'text-indigo-600' };
+
+                    return (
+                      <div key={group.supplierId} className={`${accent.bg} border ${accent.border} rounded-xl p-5 space-y-4`}>
+                        {/* Supplier Header */}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Building2 className={`w-4 h-4 ${accent.icon}`} />
+                            <h3 className={`font-semibold ${accent.text}`}>
+                              {supplier?.name || 'Tedarikçi'}
+                            </h3>
+                          </div>
+                          <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${accent.badge}`}>
+                            {formatPrice(group.subtotal)}
+                          </span>
+                        </div>
+
+                        {/* Items in this group */}
+                        <div className="text-xs space-y-0.5 opacity-70">
+                          {group.items.map((item: { name: string; requestedAmount: number; price: number }, i: number) => (
+                            <div key={i} className="flex justify-between">
+                              <span>{item.name} x{item.requestedAmount}</span>
+                              <span>{formatPrice(item.price * item.requestedAmount)}</span>
+                            </div>
+                          ))}
+                        </div>
+
+                        <hr className={`${accent.border}`} />
+
+                        {/* Card Form */}
+                        <div className="space-y-3">
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">Kart Numarası</label>
+                            <input
+                              type="text"
+                              maxLength={19}
+                              placeholder="0000 0000 0000 0000"
+                              className={`w-full px-3 py-2 border border-gray-300 rounded-lg ${accent.ring} font-mono text-sm`}
+                              onChange={(e) => {
+                                let v = e.target.value.replace(/\D/g, '').slice(0, 16);
+                                v = v.replace(/(\d{4})(?=\d)/g, '$1 ');
+                                e.target.value = v;
+                              }}
+                            />
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-xs font-medium text-gray-700 mb-1">Son Kullanma</label>
+                              <input
+                                type="text"
+                                maxLength={5}
+                                placeholder="AA/YY"
+                                className={`w-full px-3 py-2 border border-gray-300 rounded-lg ${accent.ring} font-mono text-sm`}
+                                onChange={(e) => {
+                                  let v = e.target.value.replace(/\D/g, '').slice(0, 4);
+                                  if (v.length > 2) v = v.slice(0, 2) + '/' + v.slice(2);
+                                  e.target.value = v;
+                                }}
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-gray-700 mb-1">CVV</label>
+                              <input
+                                type="password"
+                                maxLength={3}
+                                placeholder="•••"
+                                className={`w-full px-3 py-2 border border-gray-300 rounded-lg ${accent.ring} font-mono text-sm`}
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">Kart Sahibi</label>
+                            <input
+                              type="text"
+                              placeholder="AD SOYAD"
+                              className={`w-full px-3 py-2 border border-gray-300 rounded-lg ${accent.ring} uppercase text-sm`}
+                            />
+                          </div>
+                        </div>
+
+                        <div className={`${accent.badge} rounded-lg p-2.5 text-xs`}>
+                          🔒 {supplier?.name || 'Tedarikçi'} ödemesi — {formatPrice(group.subtotal)} tutarında çekim yapılacaktır. (Mock)
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
 

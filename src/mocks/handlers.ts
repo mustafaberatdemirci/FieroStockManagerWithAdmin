@@ -12,10 +12,13 @@ import {
   MOCK_STORES,
   MOCK_DASHBOARD_STATS,
   MOCK_CAMPAIGNS,
+  MOCK_SUPPLIERS,
   generateMockOrderNumber,
   getNextOrderId,
   getNextCampaignId,
+  getNextSupplierId,
   type Campaign,
+  type Supplier,
 } from './data';
 
 import type { AxiosRequestConfig } from 'axios';
@@ -166,6 +169,25 @@ export async function handleMockRequest(config: AxiosRequestConfig): Promise<Moc
   }
   if (url.includes('/admin/campaigns') && method === 'GET') {
     return { status: 200, data: { success: true, data: MOCK_CAMPAIGNS } };
+  }
+
+  // ─── SUPPLIERS (store user — active only) ────────────────────────────
+  if (url.includes('/suppliers') && !url.includes('/admin/') && method === 'GET') {
+    return { status: 200, data: { success: true, data: MOCK_SUPPLIERS.filter(s => s.isActive) } };
+  }
+
+  // ─── ADMIN SUPPLIERS (CRUD) ───────────────────────────────────────────
+  if (url.match(/\/admin\/suppliers\/[^/]+$/) && method === 'PUT') {
+    return handleAdminUpdateSupplier(url.split('/').pop()!, body);
+  }
+  if (url.match(/\/admin\/suppliers\/[^/]+$/) && method === 'DELETE') {
+    return handleAdminDeleteSupplier(url.split('/').pop()!);
+  }
+  if (url.includes('/admin/suppliers') && method === 'POST') {
+    return handleAdminCreateSupplier(body);
+  }
+  if (url.includes('/admin/suppliers') && method === 'GET') {
+    return { status: 200, data: { success: true, data: MOCK_SUPPLIERS } };
   }
 
   // ─── HEALTH ─────────────────────────────────────────────────────────────
@@ -681,4 +703,60 @@ function handleAdminDeleteCampaign(id: string): MockResponse {
 
   MOCK_CAMPAIGNS.splice(idx, 1);
   return { status: 200, data: { success: true, message: 'Campaign deleted' } };
+}
+
+// ─── Supplier Handlers ──────────────────────────────────────────────────────
+
+function handleAdminCreateSupplier(body: Record<string, unknown>): MockResponse {
+  const now = new Date().toISOString();
+  const newSupplier: Supplier = {
+    id: getNextSupplierId(),
+    name: (body.name as string) || '',
+    taxNumber: body.taxNumber as string | undefined,
+    address: body.address as string | undefined,
+    phone: body.phone as string | undefined,
+    email: body.email as string | undefined,
+    bankName: body.bankName as string | undefined,
+    iban: body.iban as string | undefined,
+    accountHolder: body.accountHolder as string | undefined,
+    apiUrl: body.apiUrl as string | undefined,
+    apiKey: body.apiKey as string | undefined,
+    webhookUrl: body.webhookUrl as string | undefined,
+    paymentMethods: (body.paymentMethods as string[]) || ['BANK_TRANSFER'],
+    isActive: body.isActive !== false,
+    createdAt: now,
+    updatedAt: now,
+  };
+  MOCK_SUPPLIERS.push(newSupplier);
+  return { status: 201, data: { success: true, data: newSupplier } };
+}
+
+function handleAdminUpdateSupplier(id: string, body: Record<string, unknown>): MockResponse {
+  const sup = MOCK_SUPPLIERS.find(s => s.id === id);
+  if (!sup) return { status: 404, data: { success: false, message: 'Supplier not found' } };
+
+  if (body.name !== undefined) sup.name = body.name as string;
+  if (body.taxNumber !== undefined) sup.taxNumber = body.taxNumber as string;
+  if (body.address !== undefined) sup.address = body.address as string;
+  if (body.phone !== undefined) sup.phone = body.phone as string;
+  if (body.email !== undefined) sup.email = body.email as string;
+  if (body.bankName !== undefined) sup.bankName = body.bankName as string;
+  if (body.iban !== undefined) sup.iban = body.iban as string;
+  if (body.accountHolder !== undefined) sup.accountHolder = body.accountHolder as string;
+  if (body.apiUrl !== undefined) sup.apiUrl = body.apiUrl as string;
+  if (body.apiKey !== undefined) sup.apiKey = body.apiKey as string;
+  if (body.webhookUrl !== undefined) sup.webhookUrl = body.webhookUrl as string;
+  if (body.paymentMethods !== undefined) sup.paymentMethods = body.paymentMethods as string[];
+  if (body.isActive !== undefined) sup.isActive = body.isActive as boolean;
+  sup.updatedAt = new Date().toISOString();
+
+  return { status: 200, data: { success: true, data: sup } };
+}
+
+function handleAdminDeleteSupplier(id: string): MockResponse {
+  const idx = MOCK_SUPPLIERS.findIndex(s => s.id === id);
+  if (idx === -1) return { status: 404, data: { success: false, message: 'Supplier not found' } };
+
+  MOCK_SUPPLIERS.splice(idx, 1);
+  return { status: 200, data: { success: true, message: 'Supplier deleted' } };
 }

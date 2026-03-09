@@ -9,6 +9,7 @@ import { AdminDashboard } from './pages/AdminDashboard';
 import { AdminProductsPage } from './pages/AdminProductsPage';
 import { AdminStoresPage } from './pages/AdminStoresPage';
 import AdminCampaignsPage from './pages/AdminCampaignsPage';
+import AdminSuppliersPage from './pages/AdminSuppliersPage';
 import { AuthProvider, useAuth } from './context/AuthContext';
 
 function PrivateRoute({ children, requiredRole }: { children: React.ReactNode, requiredRole?: 'ADMIN' | 'STORE' }) {
@@ -71,6 +72,14 @@ function App() {
             element={
               <PrivateRoute requiredRole="ADMIN">
                 <AdminCampaignsPage />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/admin/suppliers"
+            element={
+              <PrivateRoute requiredRole="ADMIN">
+                <AdminSuppliersPage />
               </PrivateRoute>
             }
           />

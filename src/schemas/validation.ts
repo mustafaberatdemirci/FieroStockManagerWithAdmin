@@ -23,6 +23,7 @@ export const stockItemSchema = z.object({
     .max(10000, 'Miktar 10.000\'i geçemez'),
   price: z.number().min(0, 'Fiyat geçersiz'),
   vatRate: z.number().min(0, 'KDV oranı geçersiz'),
+  supplierId: z.string().optional(),
 });
 
 // Stock request form validation schema

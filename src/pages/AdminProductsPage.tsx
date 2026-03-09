@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import api from '../lib/axios';
 import { Button } from '../components/ui/Button';
 import { Plus, Upload, Download, Edit, Trash2, ToggleLeft, ToggleRight, Search, X, ArrowLeft } from 'lucide-react';
+import { useAdminSuppliers } from '../hooks/useSuppliers';
 
 interface Product {
   id: string;
@@ -16,6 +17,7 @@ interface Product {
   minOrderQuantity: number;
   maxOrderQuantity?: number;
   isActive: boolean;
+  supplierId?: string;
   category?: {
     id: string;
     name: string;
@@ -35,6 +37,7 @@ interface Category {
 export function AdminProductsPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { data: suppliers = [] } = useAdminSuppliers();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -66,6 +69,7 @@ export function AdminProductsPage() {
     price: '',
     vatRate: '0.01',
     categoryId: '',
+    supplierId: '',
     stockQuantity: '',
     minOrderQuantity: '1',
     maxOrderQuantity: '',
@@ -123,6 +127,7 @@ export function AdminProductsPage() {
       price: '',
       vatRate: '0.01',
       categoryId: '',
+      supplierId: '',
       stockQuantity: '',
       minOrderQuantity: '1',
       maxOrderQuantity: '',
@@ -176,6 +181,7 @@ export function AdminProductsPage() {
         price: editingProduct.price.toString(),
         vatRate: editingProduct.vatRate.toString(),
         categoryId: editingProduct.category?.id || '',
+        supplierId: editingProduct.supplierId || '',
         stockQuantity: editingProduct.stockQuantity.toString(),
         minOrderQuantity: editingProduct.minOrderQuantity.toString(),
         maxOrderQuantity: editingProduct.maxOrderQuantity?.toString() || '',
@@ -602,6 +608,25 @@ export function AdminProductsPage() {
                     {categories.map(category => (
                       <option key={category.id} value={category.id}>
                         {category.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Tedarikçi */}
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Tedarikçi
+                  </label>
+                  <select
+                    value={productForm.supplierId}
+                    onChange={(e) => setProductForm(prev => ({ ...prev, supplierId: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  >
+                    <option value="">Tedarikçi Seçin</option>
+                    {suppliers.map(s => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}
                       </option>
                     ))}
                   </select>

@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { CheckCircle, Download, Home, Store, Package2 } from 'lucide-react';
+import { CheckCircle, Download, Home, Store, Package2, Building2, Copy, Check } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { formatPrice, formatDate } from '../utils/format';
 import { Order } from '../types';
+import { useSuppliers } from '../hooks/useSuppliers';
+import { useProducts } from '../hooks/useProducts';
 
 interface PaymentDetails {
   method: 'BANK_TRANSFER' | 'CURRENT_ACCOUNT';
@@ -24,11 +26,39 @@ export function ReceiptPage() {
   const { user } = useAuth();
   const { order, paymentDetails } = (location.state || {}) as ReceiptProps;
 
+  const { data: suppliers = [] } = useSuppliers();
+  const { data: productsData } = useProducts();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const products = (productsData as any) || [];
+  const [copiedIban, setCopiedIban] = React.useState<string | null>(null);
+
+  // Group order items by supplier
+  const supplierGroups = useMemo(() => {
+    if (!order?.items || !products.length) return [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const groups: Record<string, { supplierId: string; items: typeof order.items; subtotal: number }> = {};
+    for (const item of order.items) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const prod = products.find((p: any) => p.id === item.productId || p.code === item.product?.code);
+      const sid = prod?.supplierId || 'unknown';
+      if (!groups[sid]) groups[sid] = { supplierId: sid, items: [], subtotal: 0 };
+      groups[sid].items.push(item);
+      groups[sid].subtotal += item.lineTotal;
+    }
+    return Object.values(groups);
+  }, [order, products]);
+
   // If no order data, redirect to home
   if (!order || !paymentDetails) {
     navigate('/');
     return null;
   }
+
+  const copyIban = (iban: string) => {
+    navigator.clipboard.writeText(iban.replace(/\s/g, ''));
+    setCopiedIban(iban);
+    setTimeout(() => setCopiedIban(null), 2000);
+  };
 
   const getPaymentMethodText = (method: string) => {
     switch (method) {
@@ -154,12 +184,12 @@ export function ReceiptPage() {
               <div className="flex items-center justify-center mb-8 print-header">
                 <CheckCircle className="h-16 w-16 text-green-500 no-print" />
               </div>
-              
+
               <h2 className="text-2xl font-bold text-center text-gray-800 mb-2">
                 {isHavalePayment ? 'Sipariş Alındı' : 'Ödeme Başarılı'}
               </h2>
               <p className="text-center text-gray-600 mb-8 no-print">
-                {isHavalePayment 
+                {isHavalePayment
                   ? 'Stok talebiniz alındı. Havale işlemini tamamladıktan sonra siparişiniz işleme alınacaktır.'
                   : 'Stok talebiniz başarıyla alındı ve ödemeniz tamamlandı.'}
               </p>
@@ -249,16 +279,15 @@ export function ReceiptPage() {
                   <div className="py-4 flex justify-between">
                     <dt className="text-sm font-medium text-gray-500">Sipariş Durumu</dt>
                     <dd className="text-sm font-medium text-gray-900">
-                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                        order.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' : 
-                        order.status === 'CONFIRMED' ? 'bg-blue-100 text-blue-800' : 
-                        order.status === 'DELIVERED' ? 'bg-green-100 text-green-800' : 
-                        'bg-gray-100 text-gray-800'
-                      }`}>
-                        {order.status === 'PENDING' ? 'Beklemede' : 
-                         order.status === 'CONFIRMED' ? 'Onaylandı' : 
-                         order.status === 'DELIVERED' ? 'Teslim Edildi' : 
-                         order.status}
+                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${order.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
+                        order.status === 'CONFIRMED' ? 'bg-blue-100 text-blue-800' :
+                          order.status === 'DELIVERED' ? 'bg-green-100 text-green-800' :
+                            'bg-gray-100 text-gray-800'
+                        }`}>
+                        {order.status === 'PENDING' ? 'Beklemede' :
+                          order.status === 'CONFIRMED' ? 'Onaylandı' :
+                            order.status === 'DELIVERED' ? 'Teslim Edildi' :
+                              order.status}
                       </span>
                     </dd>
                   </div>
@@ -270,13 +299,55 @@ export function ReceiptPage() {
                       </dd>
                     </div>
                   )}
-                  {isHavalePayment && (
+                  {isHavalePayment && supplierGroups.length > 0 && (
+                    <div className="py-4 space-y-3">
+                      <h4 className="font-medium text-gray-800 mb-2">Havale Bilgileri</h4>
+                      {supplierGroups.map(group => {
+                        const supplier = suppliers.find(s => s.id === group.supplierId);
+                        return (
+                          <div key={group.supplierId} className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Building2 className="w-4 h-4 text-teal-600" />
+                              <span className="font-semibold text-gray-900 text-sm">{supplier?.name || 'Tedarikçi'}</span>
+                              <span className="ml-auto text-sm font-bold text-gray-700">{formatPrice(group.subtotal)}</span>
+                            </div>
+                            <div className="text-xs text-yellow-700 space-y-0.5 mb-2">
+                              {group.items.map(item => (
+                                <div key={item.id} className="flex justify-between">
+                                  <span>{item.product.name} x{item.quantity}</span>
+                                  <span>{formatPrice(item.lineTotal)}</span>
+                                </div>
+                              ))}
+                            </div>
+                            {supplier?.iban && (
+                              <div className="bg-white/60 rounded p-2 text-sm text-yellow-800 space-y-0.5">
+                                <p><span className="font-medium">Banka:</span> {supplier.bankName}</p>
+                                <p><span className="font-medium">Hesap Sahibi:</span> {supplier.accountHolder}</p>
+                                <div className="flex items-center justify-between">
+                                  <p className="font-mono">{supplier.iban}</p>
+                                  <button
+                                    type="button"
+                                    onClick={() => copyIban(supplier.iban!)}
+                                    className="p-1 rounded hover:bg-yellow-100 text-yellow-600 no-print"
+                                  >
+                                    {copiedIban === supplier.iban ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                      <div className="text-xs text-gray-500">
+                        <span className="font-medium">Açıklama:</span> {order.orderNumber}
+                      </div>
+                    </div>
+                  )}
+                  {isHavalePayment && supplierGroups.length === 0 && (
                     <div className="py-4">
                       <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                         <h4 className="font-medium text-yellow-800 mb-2">Havale Bilgileri</h4>
                         <div className="text-sm text-yellow-700 space-y-1">
-                          <p><span className="font-medium">Banka:</span> Garanti Bankası - Ankara OSB Şube</p>
-                          <p><span className="font-medium">IBAN:</span> TR84 0006 2001 6810 0006 2963 86</p>
                           <p><span className="font-medium">Açıklama:</span> {order.orderNumber}</p>
                           <p><span className="font-medium">Tutar:</span> {formatPrice(order.totalAmount)}</p>
                         </div>
